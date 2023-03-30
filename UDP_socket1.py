@@ -1,33 +1,103 @@
-# Use UDP_socket to control things without of using GUI
-# You may add more things and command to control equipment
-
 import socket
-import time
-
-udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+from time import sleep
 
 
-# If you want to use more things, add others using example:
+localIP = "192.168.42.30"
+localPort = 8888
+bufferSize = 1024
 
-# angle_manipulator = ("192.168.1.153", 8888) # angle_manipulator - NAME; 192.168.1.153 - IP of thing; 8888 - port. Change IP!
-# traffic_light = ("192.168.137.111", 8888)
-palletizer_manipulator = ("192.168.42.241", 8888)
-angle_manipulator=('192.168.42.12',8888)
-core=('192.168.42.17',8888)
+palitazer = ('192.168.42.31', 8888)
+lamp = ("192.168.42.32", 8888)
+server = ("192.168.42.2", 8888)
 
-while True:
-# UDP command:
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-
-    udp_socket.sendto(b'c:200:10:15#', core)
+sock.bind((localIP, localPort))
 
 
-# udp_socket.sendto(b'p:200:0:0:1#', palletizer_manipulator)# 'p:200:0:0:0#' - 'p : coord. X : coord. Y : 0/1 - down/up gripper : 0/1 - switch off/on pump#'
-# 'g' - angle manipulator / 'p' - palletizer manipulator; 
-#udp_socket.sendto(b'g:200:0:0:0:0#', angle_manipulator) # 'g:200:0:0:0:0#' - 'g : coord. X : coord. Y : coord. T : 0/1 - down/up gripper : 0/1 - switch off/on pump#'
+sock.sendto(b'g:200:-120:0:40:0#', palitazer)  # get detail
+sleep(4)
+# msg, addr = sock.recvfrom(bufferSize)
+# print(msg, addr)
 
-
-time.sleep(2)# Pause 3 sec.
-
-
-# Add more command...
+# state_lamp = {'waiting': "l:0:0:0:1#",
+#               'moving': "l:0:0:1:0#",
+#               'alarm': "l:1:0:0:0#",
+#               'work': "l:0:1:0:0#"
+#              }
+#
+# state_palitazer = {'get': "g:180:-250:0:70:0#",
+#                   'put': "g:200:250:0:50:0#",
+#                   'middle': "g:180:0:0:70:0#",
+#                   }
+#
+#
+#
+#
+#
+#
+# def send_lamp(state):
+#     print(state_lamp.get(state))
+#     msg = state_lamp.get(state)
+#     bytesToSend = str.encode(msg)
+#     sock.sendto(bytesToSend, lamp)
+#
+#
+#
+# # def moveManipulator(position):
+# #     #send_lamp('moving')
+# #     #
+# #
+# #     msg1 = state_palitazer.get(position)
+# #     msgsen = str.encode(msg1)
+# #
+# #
+# #
+# #     sock.sendto(msgsen, palitazer)
+# #
+# #     sleep(2)
+#
+# def move(x, y, z, a, g):
+#     #sock.sendto(str.encode("r#"), serverAddressPort)
+#     sock.sendto(str.encode(f"g:{x}:{y}:{a}:{z}:{g}#"), palitazer)
+#
+#
+#
+# # 180, 130, 0, 50,0
+#
+#
+#
+# sock.sendto(str.encode("r#"), palitazer)
+# #
+# while True:
+#     msg, addr = sock.recvfrom(bufferSize)
+#     print(msg, addr)
+#
+#     if addr[0] == '192.168.42.31':
+#         print("hello")
+#
+#     elif addr[0] == '192.168.42.54':
+#         print("palitazer_ready")
+#
+#     # move(180, 0, 70, 0, 0)
+#     # sleep(2)
+#     #
+#     # move(180, -280, 70, 0, 0)
+#     # sleep(2)
+#     #
+#     # move(180, -280, 10, 0, 0)
+#     # sleep(2)
+#     # move(180, -280, 10, 0, 1)
+#
+# def sendToServer(N, Param, Value):
+#     sock.sendto(str.encode(f"{N}:{Param}:{Value}#"), server)
+#
+# #sendToServer(3,status,2)
+#
+#
+#
+#
+#
+#
+#
+#
