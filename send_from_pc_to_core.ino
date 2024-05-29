@@ -1,103 +1,191 @@
-#include "DxlMaster.h"
 
-#include <Ethernet.h>
-#include <EthernetUdp.h>
-#include <EEPROM.h>
+//правое заднее   f12    r9
+//левое переднее   f4    r7
+//левое заднее   f6    r5
+#define PIN_IN3 23
+#define PIN_IN4 25
 
-#define DXL_BAUDRATE 1000000
-#define DXL_ID 1
-#define DXL_REG 27
-#define UDP_PORT 8888
+#define rff 11
+#define rfr 10
+#define rrf 12
+#define rrr 9
+#define lff 7
+#define lfr 4
+#define lrf 6
+#define lrr 5
+#include "FlySkyIBus.h"
 
-IPAddress MyIP(192, 168, 42, 17); //core
 
-EthernetUDP Udp;
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
-byte mac[6];
 
-byte serialBuffer[15];
+int x = 0;
+int y = 0;
+int z =0;
+int c = 0;
+int r = 0;
+int l = 0;
 
-//DynamixelMotor motor((byte)DXL_ID);
+int manip = 0;
+bool flag = false;
+bool move_manip = false;
 
-void setup() {
-  //DxlMaster.begin(DXL_BAUDRATE);
-  //motor.init();
-  //motor.wheelMode();
-  Serial.begin(115200);
-  //Считываем данные из EEPROM и представляем их как IP адреса
-  //IP адрес модуля
-  // for (int addr = 0; addr < 4; addr++) {
-  //   MyIP[addr] = EEPROM.read(addr);
-  // }
-  mac[0] = MyIP[0];
-  mac[1] = MyIP[1];
-  mac[2] = MyIP[2];
-  mac[3] = MyIP[3];
-  mac[4] = MyIP[2];
-  mac[5] = MyIP[3];
-  Serial.begin(115200);
-  Ethernet.begin(mac, MyIP);
-  Udp.begin(UDP_PORT);
-  Serial.println("----------------------");
-  Serial.println("UDP connection is at: ");
-  Serial.println(Ethernet.localIP());
-  // Serial.println("Type 1 to change localIP");  
-  Serial.println("----------------------");
-}
-/*
-int16_t parseSpeed(){
-  int16_t result;
-  String str = "";
+
+void setup()
+{
+  Serial.begin(115200);//для обмена данными с малиной
   
-  for(int i = 2; i < 6; i++){   // c:200:10:15#
-    if(packetBuffer[i] > '0' || packetBuffer[i] < '9' || packetBuffer[i] == '-'){ //из строки берем направление вращения и по цифре составляем скорость
-      str += (String)packetBuffer[i];
-      result = str.toInt();      
-    } else {
-      return result;      
-    }
+  IBus.begin(Serial2);
+  for (int i = 4; i < 14; i++) {
+    pinMode(i, OUTPUT);
+    digitalWrite(i, 0);
   }
-  return result;
-}
-*/
-void processUdp(){
-int packetSize = Udp.parsePacket();
-  if (packetSize) {
-    Serial.print("From ");
-    IPAddress remote = Udp.remoteIP();
-    for (int i = 0; i < 4; i++) {
-      Serial.print(remote[i], DEC);
-      if (i < 3) Serial.print("."); 
-      }
-    Serial.print(", port ");
-    Serial.println(Udp.remotePort());
-    Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-    Serial.println("Contents:");
-    Serial.println(packetBuffer);
-
-    int len = strlen(packetBuffer);
-   // Serial.println(len);
-
-    String str = "";
-    for(int i = 2; i < len; i++){   // c:200:10:15#
-      
-     if(packetBuffer[i] == ':' || packetBuffer[i] == '#' ){
-       
-      int result = str.toInt();
-      Serial.println(result);
-      str = "";
-      
-     }
-     else if(packetBuffer[i] > '0' || packetBuffer[i] < '9'){ //из строки берем направление вращения и по цифре составляем скорость
-      str += (String)packetBuffer[i];
-      }  
   
-}  //int result = str.toInt();
-   //Serial.println(str);
-   // Serial.println(result);
-  }}
+  pinMode(22,OUTPUT);
+  pinMode(24,OUTPUT);
+  pinMode(26,OUTPUT);
+  pinMode(28,OUTPUT);
+  digitalWrite(22,0);
+  digitalWrite(24,0);
+  digitalWrite(26,0);
+  digitalWrite(28,0);
 
-void loop() {
-
-  processUdp();
+  pinMode(PIN_IN3,OUTPUT);
+  pinMode(PIN_IN4,OUTPUT);
+  
+  delay(2000);
 }
+
+void loop()
+{
+  IBus.loop();
+  x = IBus.readChannel(0); //возможно надо добавить аргумент HEX как в оригинале
+  y = IBus.readChannel(1);
+  
+  //тут не знаю какой канал будет отвечать, сами посмотрите
+  z = IBus.readChannel(2);
+
+  
+  
+  manip = IBus.readChannel(6);
+ 
+   
+  x = map(x, 1000, 2000, -255, 255);
+  y = map(y, 1000, 2000, -255, 255);
+  z = map(y, 1000, 2000, -255, 255);
+
+  
+  manip = map(manip, 1000, 2000, -1, 1);
+  
+
+ //определяем где сейчас тумблер. Если при включении пульта тумблер был вверху, то его все равно надо перевести в центральное положение а затем в верхнее для начала управления манипулятором.
+  if (manip == 0){ //тумблер посередине, идет управление машинкой
+    
+
+    flag = true;
+    move_manip =false;
+    
+    
+  }else if ((manip == -1) && (flag == true)){ //тумблер вверху
+    
+   flag=false;
+    move_manip=true;
+  } 
+
+
+
+if (move_manip){ //если тумблер вверху по полученные значения координат x y z будем передавать на малину, иначе условие перейдет в блок управления машинкой
+  Serial.print(x, y,z);
+
+} else{
+
+
+  if ((x < 50) && (x > -50)) {
+    x = 0;
+  }
+  if (x > 150) {
+    x = 255;
+  }
+  if (x < -150) {
+    x = -255;
+  }
+
+
+  if ((y < 50) && (y > -50)) {
+    y = 0; 
+  }
+  if (y > 150) {
+    y = 255;
+  }
+  if (y < -150) {
+    y = -255;
+  }
+
+  
+  l = x + y;
+  r = y - x;
+
+
+  if ((r < 50) && (r > -50)) {
+    r = 0;
+  }
+  if (r > 150) {
+    r = 255;
+  }
+  if (r < -150) {
+    r = -255;
+  }
+  if ((l < 50) && (l > -50)) {
+    l = 0;
+  }
+  if (l > 150) {
+    l = 255;
+  }
+  if (l < -150) {
+    l = -255;
+  }
+  if(l>0){
+    digitalWrite(lfr,0);
+    digitalWrite(lrr,0);
+    analogWrite(lff,l);
+    analogWrite(lrf,l);
+  } else{
+    digitalWrite(lff,0);
+    digitalWrite(lrf,0);
+    analogWrite(lfr,-l);
+    analogWrite(lrr,-l);
+  }
+  if(l==0){
+    digitalWrite(lff,0);
+    digitalWrite(lrf,0);
+    digitalWrite(lfr,0);
+    digitalWrite(lrr,0);
+  }
+
+    if(r>0){
+    digitalWrite(rfr,0);
+    digitalWrite(rrr,0);
+    analogWrite(rff,r);
+    analogWrite(rrf,r);
+  } else{
+    digitalWrite(rff,0);
+    digitalWrite(rrf,0);
+    analogWrite(rfr,-r);
+    analogWrite(rrr,-r);
+  }
+  if(r==0){
+    digitalWrite(rff,0);
+    digitalWrite(rrf,0);
+    digitalWrite(rfr,0);
+    digitalWrite(rrr,0);
+  }
+  
+  
+//  Serial.print("  x=");
+//  Serial.print(x);
+//  Serial.print("  y=");
+//  Serial.print(y);
+//  Serial.print("  b=");
+//  Serial.print(b);
+//  Serial.println();
+//  delay(300);
+
+} }
